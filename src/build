@@ -1,0 +1,6 @@
+#!/bin/bash
+g++ -std=c++17 -Wall -Werror -o bin/animate \
+    animate.cpp \
+    || exit 1
+
+exit 0
