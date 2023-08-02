@@ -22,12 +22,13 @@
     SOFTWARE.
 */
 
+#include <cstdio>
 #include "raylib.h"
 
 int main(int argc, const char *argv[])
 {
-    const int screenWidth  =  800;
-    const int screenHeight = 1000;
+    const int screenWidth  = 900;
+    const int screenHeight = 900;
 
     InitWindow(screenWidth, screenHeight, "Lightning/thunder simulation by Don Cross");
     Camera3D camera{};
@@ -37,9 +38,20 @@ int main(int argc, const char *argv[])
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
+    SetCameraMode(camera, CAMERA_ORBITAL);
+
     SetTargetFPS(60);
-    while (!WindowShouldClose())
+
+    for (int frame = 0;!WindowShouldClose(); ++frame)
     {
+        if (frame % 100 == 0)
+        {
+            printf("camera pos(%f, %f, %f), target(%f, %f, %f), up(%f, %f, %f)\n",
+                camera.position.x, camera.position.y, camera.position.z,
+                camera.target.x, camera.target.y, camera.target.z,
+                camera.up.x, camera.up.y, camera.up.z);
+        }
+
         UpdateCamera(&camera);
         BeginDrawing();
         ClearBackground(BLACK);
