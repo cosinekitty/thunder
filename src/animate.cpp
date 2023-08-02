@@ -26,6 +26,28 @@
 
 int main(int argc, const char *argv[])
 {
+    const int screenWidth  =  800;
+    const int screenHeight = 1000;
+
+    InitWindow(screenWidth, screenHeight, "Lightning/thunder simulation by Don Cross");
+    Camera3D camera{};
+    camera.position = (Vector3){10.0f, 10.0f, 10.0f};
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+
+    SetTargetFPS(60);
+    while (!WindowShouldClose())
+    {
+        UpdateCamera(&camera);
+        BeginDrawing();
+        ClearBackground(BLACK);
+        BeginMode3D(camera);
+        DrawGrid(10, 1.0f);
+        EndMode3D();
+        EndDrawing();
+    }
+    CloseWindow();
     return 0;
 }
-

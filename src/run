@@ -1,0 +1,4 @@
+#!/bin/bash
+./build || exit 1
+./bin/animate || exit 1
+exit 0

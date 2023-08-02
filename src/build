@@ -1,5 +1,5 @@
 #!/bin/bash
-g++ -std=c++17 -Wall -Werror -o bin/animate \
+g++ -std=c++17 -Wall -Werror -o bin/animate -l raylib \
     animate.cpp \
     || exit 1
 
