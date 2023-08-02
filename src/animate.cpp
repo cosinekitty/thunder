@@ -23,7 +23,10 @@
 */
 
 #include <cstdio>
+#include <cmath>
 #include "raylib.h"
+
+static Vector3 Vantage(float viewAngle);
 
 int main(int argc, const char *argv[])
 {
@@ -32,18 +35,22 @@ int main(int argc, const char *argv[])
 
     InitWindow(screenWidth, screenHeight, "Lightning/thunder simulation by Don Cross");
     Camera3D camera{};
-    camera.position = (Vector3){10.0f, 10.0f, 10.0f};
-    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.position = (Vector3){10.0f, 5.0f, 10.0f};
+    camera.target = (Vector3){ 0.0f, 2.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
-    camera.fovy = 45.0f;
+    camera.fovy = 50.0f;
     camera.projection = CAMERA_PERSPECTIVE;
-
-    SetCameraMode(camera, CAMERA_ORBITAL);
 
     SetTargetFPS(60);
 
-    for (int frame = 0;!WindowShouldClose(); ++frame)
+    float viewAngle = 0.0f;
+
+    for (int frame = 0; !WindowShouldClose(); ++frame)
     {
+        viewAngle = std::fmod(viewAngle + 0.001f, 2.0 * M_PI);
+        camera.position = Vantage(viewAngle);
+        SetCameraMode(camera, CAMERA_FREE);
+
         if (frame % 100 == 0)
         {
             printf("camera pos(%f, %f, %f), target(%f, %f, %f), up(%f, %f, %f)\n",
@@ -62,4 +69,34 @@ int main(int argc, const char *argv[])
     }
     CloseWindow();
     return 0;
+}
+
+
+static Vector3 Vantage(float viewAngle)
+{
+    // camera pos(-14.131022, 5.773502, 0.560571), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(-9.086400, 5.773502, 10.836852), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(1.912164, 5.773502, 14.012268), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(11.657681, 5.773502, 8.006153), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(13.764566, 5.773502, -3.246038), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(6.852185, 5.773502, -12.371241), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(-4.550715, 5.773502, -13.389960), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(-12.971193, 5.773502, -5.634551), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(-12.892283, 5.773502, 5.812835), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(-4.365895, 5.773502, 13.451357), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(7.023420, 5.773502, 12.274837), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(13.808298, 5.773502, 3.054655), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    // camera pos(11.545347, 5.773502, -8.167313), target(0.000000, 0.000000, 0.000000), up(0.000000, 1.000000, 0.000000)
+    Vector3 vec;
+
+    const float radius = 15.0f;
+    vec.x = radius * std::cos(viewAngle);
+    vec.y = 6.0f;
+    vec.z = radius * std::sin(viewAngle);
+
+    //vec.x = 10.0f;
+    //vec.y = 5.0f;
+    //vec.z = 10.0f;
+
+    return vec;
 }
