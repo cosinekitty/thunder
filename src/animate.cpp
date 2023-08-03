@@ -25,8 +25,10 @@
 #include <cstdio>
 #include <cmath>
 #include "raylib.h"
+#include "lightning.hpp"
 
 static Vector3 Vantage(float viewAngle);
+static void Render(const Sapphire::LightningBolt& bolt);
 
 int main(int argc, const char *argv[])
 {
@@ -41,6 +43,9 @@ int main(int argc, const char *argv[])
     camera.projection = CAMERA_PERSPECTIVE;
 
     SetTargetFPS(60);
+
+    Sapphire::LightningBolt bolt;
+    bolt.generate();
 
     float viewAngle = 0.0f;
 
@@ -63,6 +68,7 @@ int main(int argc, const char *argv[])
         ClearBackground(BLACK);
         BeginMode3D(camera);
         DrawGrid(10, 1.0f);
+        Render(bolt);
         EndMode3D();
         EndDrawing();
     }
@@ -81,4 +87,10 @@ static Vector3 Vantage(float viewAngle)
     vec.z = radius * std::sin(viewAngle);
 
     return vec;
+}
+
+
+static void Render(const Sapphire::LightningBolt& bolt)
+{
+    
 }
