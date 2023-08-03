@@ -44,25 +44,16 @@ int main(int argc, const char *argv[])
 
     SetTargetFPS(60);
 
-    Sapphire::LightningBolt bolt;
+    Sapphire::LightningBolt bolt(50);
     bolt.generate();
 
     float viewAngle = 0.0f;
 
-    for (int frame = 0; !WindowShouldClose(); ++frame)
+    while (!WindowShouldClose())
     {
         viewAngle = std::fmod(viewAngle + 0.001f, 2.0 * M_PI);
         camera.position = Vantage(viewAngle);
         SetCameraMode(camera, CAMERA_FREE);
-
-        if (frame % 100 == 0)
-        {
-            printf("camera pos(%f, %f, %f), target(%f, %f, %f), up(%f, %f, %f)\n",
-                camera.position.x, camera.position.y, camera.position.z,
-                camera.target.x, camera.target.y, camera.target.z,
-                camera.up.x, camera.up.y, camera.up.z);
-        }
-
         UpdateCamera(&camera);
         BeginDrawing();
         ClearBackground(BLACK);
@@ -82,9 +73,9 @@ static Vector3 Vantage(float viewAngle)
     Vector3 vec;
 
     const float radius = 15.0f;
-    vec.x = radius * std::cos(viewAngle);
+    vec.x = radius * std::sin(viewAngle);
     vec.y = 6.0f;
-    vec.z = radius * std::sin(viewAngle);
+    vec.z = radius * std::cos(viewAngle);
 
     return vec;
 }
@@ -92,5 +83,25 @@ static Vector3 Vantage(float viewAngle)
 
 static void Render(const Sapphire::LightningBolt& bolt)
 {
-    
+    const float scale = 10.0 / 4000.0;      // world-units per meter
+    Vector3 startPos, endPos;
+    Color color = PURPLE;
+
+    for (const Sapphire::BoltSegment& seg : bolt.segments())
+    {
+        // Convert my coordinates with the x-y plane as horizontal,
+        // to raylib coordinates with x-z plane as horizontal.
+        // Preserve the right-hand rule.
+        // Convert meters to world-units.
+
+        startPos.x = scale * seg.a.x;
+        startPos.y = scale * seg.a.z;
+        startPos.z = -scale * seg.a.y;
+
+        endPos.x = scale * seg.b.x;
+        endPos.y = scale * seg.b.z;
+        endPos.z = -scale * seg.b.y;
+
+        DrawLine3D(startPos, endPos, color);
+    }
 }
