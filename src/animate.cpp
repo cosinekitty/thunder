@@ -24,12 +24,17 @@
 
 #include <cstdio>
 #include <cmath>
+#include <cinttypes>
+
 #include "raylib.h"
 #include "lightning.hpp"
+
+const int MAX_SAMPLES_PER_UPDATE = 4096;
 
 static Vector3 Vantage(float viewAngle);
 static void Render(const Sapphire::LightningBolt& bolt);
 static void Save(const Sapphire::LightningBolt& bolt);
+static void AudioInputCallback(void *buffer, unsigned int frames);
 
 int main(int argc, const char *argv[])
 {
@@ -37,6 +42,13 @@ int main(int argc, const char *argv[])
     const int screenHeight = 900;
 
     InitWindow(screenWidth, screenHeight, "Lightning simulation by Don Cross");
+
+    InitAudioDevice();
+    SetAudioStreamBufferSizeDefault(MAX_SAMPLES_PER_UPDATE);
+    AudioStream stream = LoadAudioStream(44100, 16, 2);
+    SetAudioStreamCallback(stream, AudioInputCallback);
+    PlayAudioStream(stream);
+
     Camera3D camera{};
     camera.target = (Vector3){ 0.0f, 2.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
@@ -70,6 +82,9 @@ int main(int argc, const char *argv[])
         EndMode3D();
         EndDrawing();
     }
+
+    UnloadAudioStream(stream);
+    CloseAudioDevice();
     CloseWindow();
     return 0;
 }
@@ -150,3 +165,16 @@ static void Save(const Sapphire::LightningBolt& bolt)
         fclose(outfile);
     }
 }
+
+
+static void AudioInputCallback(void *buffer, unsigned frames)
+{
+    int16_t *data = static_cast<int16_t *>(buffer);
+    unsigned s = 0;
+    for (unsigned i = 0; i < frames; ++i)
+    {
+        data[s++] = ((i & 0xfff) == 0) ? 20000 : 0;
+        data[s++] = ((i & 0x7ff) == 0) ? 20000 : 0;
+    }
+}
+
