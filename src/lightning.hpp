@@ -26,6 +26,9 @@ namespace Sapphire
     };
 
 
+    using BoltPointList = std::vector<BoltPoint>;
+
+
     inline double Distance(const BoltPoint& a, const BoltPoint& b)
     {
         double dx = b.x - a.x;
@@ -122,6 +125,11 @@ namespace Sapphire
             seglist.reserve(_maxSegments);
         }
 
+        std::size_t getMaxSegments() const
+        {
+            return maxSegments;
+        }
+
         void generate(double heightMeters = 3000.0, double radiusMeters = 1000.0, double jaggedness = 1.0)
         {
             seglist.clear();
@@ -143,6 +151,47 @@ namespace Sapphire
         const BoltSegmentList& segments() const
         {
             return seglist;
+        }
+    };
+
+
+    struct ThunderSegment
+    {
+        double distance1;
+        double distance2;
+    };
+
+
+    using ThunderSegmentList = std::vector<ThunderSegment>;
+
+
+    class Thunder
+    {
+    private:
+        BoltPointList ears;
+        std::vector<ThunderSegmentList> seglistForEar;
+
+    public:
+        Thunder(const BoltPointList& _ears, std::size_t _maxSegments)
+            : ears(_ears)       // make a copy of the vector
+            , seglistForEar(_ears.size())
+        {
+            for (ThunderSegmentList& slist : seglistForEar)
+                slist.reserve(_maxSegments);
+        }
+
+        std::size_t numEars() const
+        {
+            return ears.size();
+        }
+
+        const ThunderSegmentList& segments(std::size_t earIndex) const
+        {
+            return seglistForEar.at(earIndex);
+        }
+
+        void start(const LightningBolt& bolt)
+        {
         }
     };
 }

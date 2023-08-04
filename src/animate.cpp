@@ -29,6 +29,7 @@
 
 static Vector3 Vantage(float viewAngle);
 static void Render(const Sapphire::LightningBolt& bolt);
+static void Save(const Sapphire::LightningBolt& bolt);
 
 int main(int argc, const char *argv[])
 {
@@ -53,6 +54,9 @@ int main(int argc, const char *argv[])
     {
         if (IsKeyPressed(KEY_R))
             bolt.generate();
+
+        if (IsKeyPressed(KEY_S))
+            Save(bolt);
 
         viewAngle = std::fmod(viewAngle + 0.002f, 2.0 * M_PI);
         camera.position = Vantage(viewAngle);
@@ -106,5 +110,43 @@ static void Render(const Sapphire::LightningBolt& bolt)
         endPos.z = -scale * seg.b.y;
 
         DrawLine3D(startPos, endPos, color);
+    }
+}
+
+
+static void Save(const Sapphire::LightningBolt& bolt)
+{
+    using namespace Sapphire;
+
+    // Create a pair of ears for stereo audio output.
+    BoltPointList ears
+    {
+        BoltPoint{4000.0, +0.1, 0.0},
+        BoltPoint{4000.0, -0.1, 0.0}
+    };
+
+    // Convert the lightning bolt into a thunder generator.
+    Thunder thunder{ears, bolt.getMaxSegments()};
+    thunder.start(bolt);
+
+    // Save lightning and thunder for study.
+    FILE *outfile = fopen("output/thunder.txt", "wt");
+    if (outfile != nullptr)
+    {
+        fprintf(outfile, "LightningBolt\n");
+        for (const BoltSegment &b : bolt.segments())
+            fprintf(outfile, "    (%lg, %lg, %lg) (%lg, %lg, %lg)\n", b.a.x, b.a.y, b.a.z, b.b.x, b.b.y, b.b.z);
+
+        const std::size_t n = thunder.numEars();
+        fprintf(outfile, "\nEar count = %d\n", static_cast<int>(n));
+
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            fprintf(outfile, "\nThunder[%d]\n", static_cast<int>(i));
+            for (const ThunderSegment &t : thunder.segments(i))
+                fprintf(outfile, "    (%lg, %lg)\n", t.distance1, t.distance2);
+        }
+
+        fclose(outfile);
     }
 }
