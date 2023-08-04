@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <random>
 #include <stdexcept>
 #include <vector>
@@ -130,6 +131,11 @@ namespace Sapphire
             return maxSegments;
         }
 
+        const BoltSegmentList& segments() const
+        {
+            return seglist;
+        }
+
         void generate(double heightMeters = 3000.0, double radiusMeters = 1000.0, double jaggedness = 1.0)
         {
             seglist.clear();
@@ -147,19 +153,20 @@ namespace Sapphire
                 crinkle(top, bottom, maxSegments);
             }
         }
-
-        const BoltSegmentList& segments() const
-        {
-            return seglist;
-        }
     };
 
 
     struct ThunderSegment
     {
-        double distance1;
-        double distance2;
+        double distance1{};
+        double distance2{};
     };
+
+
+    inline bool operator < (const ThunderSegment& a, const ThunderSegment& b)       // for sorting
+    {
+        return a.distance1 < b.distance1;
+    }
 
 
     using ThunderSegmentList = std::vector<ThunderSegment>;
@@ -169,11 +176,38 @@ namespace Sapphire
     {
     private:
         BoltPointList ears;
+        const std::size_t maxSegments;
         std::vector<ThunderSegmentList> seglistForEar;
+
+        void startEar(const LightningBolt& bolt, const BoltPoint& ear, ThunderSegmentList& seglist)
+        {
+            seglist.clear();
+            for (const BoltSegment& bs : bolt.segments())
+            {
+                // Calculate the distance of each of the bolt segment's endpoints to this ear.
+                ThunderSegment ts;
+                ts.distance1 = Distance(ear, bs.a);
+                ts.distance2 = Distance(ear, bs.b);
+
+                // Make sure the first distance is equal or closer than the second.
+                if (ts.distance1 > ts.distance2)
+                {
+                    double swap = ts.distance1;
+                    ts.distance1 = ts.distance2;
+                    ts.distance2 = swap;
+                }
+
+                seglist.push_back(ts);
+            }
+
+            // Sort the segment list in ascending order of closer distances.
+            std::sort(seglist.begin(), seglist.end());
+        }
 
     public:
         Thunder(const BoltPointList& _ears, std::size_t _maxSegments)
             : ears(_ears)       // make a copy of the vector
+            , maxSegments(_maxSegments)
             , seglistForEar(_ears.size())
         {
             for (ThunderSegmentList& slist : seglistForEar)
@@ -185,6 +219,11 @@ namespace Sapphire
             return ears.size();
         }
 
+        std::size_t getMaxSegments() const
+        {
+            return maxSegments;
+        }
+
         const ThunderSegmentList& segments(std::size_t earIndex) const
         {
             return seglistForEar.at(earIndex);
@@ -192,6 +231,12 @@ namespace Sapphire
 
         void start(const LightningBolt& bolt)
         {
+            if (bolt.getMaxSegments() > maxSegments)
+                throw std::range_error("LightningBolt has too many segments for this Thunder object.");
+
+            const std::size_t n = ears.size();
+            for (std::size_t i = 0; i < n; ++i)
+                startEar(bolt, ears.at(i), seglistForEar.at(i));
         }
     };
 }
