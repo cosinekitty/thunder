@@ -35,7 +35,7 @@ int main(int argc, const char *argv[])
     const int screenWidth  = 900;
     const int screenHeight = 900;
 
-    InitWindow(screenWidth, screenHeight, "Lightning/thunder simulation by Don Cross");
+    InitWindow(screenWidth, screenHeight, "Lightning simulation by Don Cross");
     Camera3D camera{};
     camera.target = (Vector3){ 0.0f, 2.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
@@ -51,6 +51,9 @@ int main(int argc, const char *argv[])
 
     while (!WindowShouldClose())
     {
+        if (IsKeyPressed(KEY_R))
+            bolt.generate();
+
         viewAngle = std::fmod(viewAngle + 0.002f, 2.0 * M_PI);
         camera.position = Vantage(viewAngle);
         SetCameraMode(camera, CAMERA_FREE);
