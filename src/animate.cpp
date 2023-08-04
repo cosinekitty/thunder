@@ -44,14 +44,14 @@ int main(int argc, const char *argv[])
 
     SetTargetFPS(60);
 
-    Sapphire::LightningBolt bolt(50);
+    Sapphire::LightningBolt bolt(2000);
     bolt.generate();
 
     float viewAngle = 0.0f;
 
     while (!WindowShouldClose())
     {
-        viewAngle = std::fmod(viewAngle + 0.001f, 2.0 * M_PI);
+        viewAngle = std::fmod(viewAngle + 0.002f, 2.0 * M_PI);
         camera.position = Vantage(viewAngle);
         SetCameraMode(camera, CAMERA_FREE);
         UpdateCamera(&camera);

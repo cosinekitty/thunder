@@ -1,27 +1,39 @@
 #pragma once
 
+#include <random>
+#include <stdexcept>
 #include <vector>
 
 namespace Sapphire
 {
     struct BoltPoint
     {
-        float x;
-        float y;
-        float z;
+        double x;
+        double y;
+        double z;
 
         BoltPoint()
-            : x(0.0f)
-            , y(0.0f)
-            , z(0.0f)
+            : x(0.0)
+            , y(0.0)
+            , z(0.0)
             {}
 
-        BoltPoint(float _x, float _y, float _z)
+        BoltPoint(double _x, double _y, double _z)
             : x(_x)
             , y(_y)
             , z(_z)
             {}
     };
+
+
+    inline double Distance(const BoltPoint& a, const BoltPoint& b)
+    {
+        double dx = b.x - a.x;
+        double dy = b.y - a.y;
+        double dz = b.z - a.z;
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    }
+
 
     struct BoltSegment
     {
@@ -37,23 +49,95 @@ namespace Sapphire
             {}
     };
 
+
     using BoltSegmentList = std::vector<BoltSegment>;
+
 
     class LightningBolt
     {
     private:
         BoltSegmentList seglist;
+        const std::size_t maxSegments;
+        double jag{};
+        std::default_random_engine generator;
+        std::normal_distribution<double> distribution{0.0, 1.0};
 
-    public:
-        LightningBolt(std::size_t maxSegments)
+        BoltPoint randomHorizontal(double z, double radiusStandardDev)
         {
-            seglist.reserve(maxSegments);
+            // Pick a random vector parallel to the x-y plane, with zero z-displacement.
+            double r = radiusStandardDev / M_SQRT2;
+            double x = r * distribution(generator);
+            double y = r * distribution(generator);
+            return BoltPoint{x, y, z};
         }
 
-        void generate(float heightMeters = 3000.0f, float radiusMeters = 1000.0f)
+        void crinkle(BoltPoint first, BoltPoint second, std::size_t budget)
+        {
+            if (budget == 0)
+                throw std::logic_error("Cannot complete lightning fractal!");
+
+            if (budget == 1)
+            {
+                seglist.push_back(BoltSegment{first, second});
+            }
+            else
+            {
+                BoltPoint midpoint{(first.x + second.x)/2, (first.y + second.y)/2, (first.z + second.z)/2};
+                double disp = jag * Distance(first, second);
+                midpoint.x += disp * distribution(generator);
+                midpoint.y += disp * distribution(generator);
+                midpoint.z += disp * distribution(generator);
+
+                // Split the budget as equally as possible between the two halves of the fractal.
+                // When the budget is an odd number, flip a coin to see who gets the extra coin.
+                std::size_t firstBudget = budget / 2;
+                std::size_t secondBudget = firstBudget;
+                if (budget & 1)
+                {
+                    if (generator() & 1)
+                        ++firstBudget;
+                    else
+                        ++secondBudget;
+                }
+
+                if (firstBudget + secondBudget != budget)
+                    throw std::logic_error("Budget calculation error!");
+
+                crinkle(first, midpoint, firstBudget);
+                crinkle(midpoint, second, secondBudget);
+            }
+        }
+
+    public:
+        LightningBolt(std::size_t _maxSegments, unsigned _randomSeed = 0)
+            : maxSegments(_maxSegments)
+            , generator(_randomSeed)
+        {
+            // We must do all memory allocation at construction time.
+            // Because LightningBolt can be part of an audio rendering pipeline,
+            // we can't afford to allocate or free any memory once we start rendering.
+            // Otherwise we risk unpredictable delays, which could cause audio stuttering.
+            // Therefore, pre-reserve all memory we will need.
+            // We will never go beyond the user-specified number of segments.
+            seglist.reserve(_maxSegments);
+        }
+
+        void generate(double heightMeters = 3000.0, double radiusMeters = 1000.0, double jaggedness = 1.0)
         {
             seglist.clear();
-            seglist.push_back(BoltSegment(BoltPoint(0.0, 0.0, heightMeters), BoltPoint(radiusMeters/4, radiusMeters/2, 0.0)));
+
+            if (maxSegments > 0)
+            {
+                // Start with a single line segment representing the entire length of the lightning bolt.
+                // The parameters `heightMeters` and `radiusMeters` define a cylindrical frame of reference
+                // within which we maintain a loose confinement based on standard deviations of a normal distribution.
+                BoltPoint top = randomHorizontal(heightMeters, radiusMeters);
+                BoltPoint bottom = randomHorizontal(0.0, radiusMeters);
+
+                // Recursively split the line segment into many crinkly line segments.
+                jag = 0.15 * jaggedness;     // experimentally derived factor to create pleasing results for jaggedness = 1.0
+                crinkle(top, bottom, maxSegments);
+            }
         }
 
         const BoltSegmentList& segments() const
