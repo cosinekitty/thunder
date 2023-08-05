@@ -238,5 +238,19 @@ namespace Sapphire
             for (std::size_t i = 0; i < n; ++i)
                 startEar(bolt, ears.at(i), seglistForEar.at(i));
         }
+
+        std::vector<float> renderAudio(int sampleRateHz) const
+        {
+            std::vector<float> buffer;
+
+            for (int i = 0; i < sampleRateHz; ++i)
+            {
+                float x = std::sin((i * (2*M_PI) * 440.0) / sampleRateHz);
+                buffer.push_back(x);
+                buffer.push_back(x);
+            }
+
+            return buffer;
+        }
     };
 }

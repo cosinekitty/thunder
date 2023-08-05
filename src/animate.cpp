@@ -25,16 +25,31 @@
 #include <cstdio>
 #include <cmath>
 #include <cinttypes>
+#include <mutex>
 
 #include "raylib.h"
 #include "lightning.hpp"
 
 const int MAX_SAMPLES_PER_UPDATE = 4096;
+const int SAMPLE_RATE = 44100;
+const int NUM_CHANNELS = 2;
 
 static Vector3 Vantage(float viewAngle);
 static void Render(const Sapphire::LightningBolt& bolt);
 static void Save(const Sapphire::LightningBolt& bolt);
-static void AudioInputCallback(void *buffer, unsigned int frames);
+static void AudioInputCallback(void *buffer, unsigned frames);
+static void MakeThunder(Sapphire::LightningBolt& bolt);
+
+// Create a pair of ears for stereo audio output.
+static const Sapphire::BoltPointList Listener
+{
+    Sapphire::BoltPoint{4000.0, +0.1, 0.0},
+    Sapphire::BoltPoint{4000.0, -0.1, 0.0}
+};
+
+const std::size_t MAX_SEGMENTS = 2000;
+static Sapphire::Thunder BackgroundThunder{Listener, MAX_SEGMENTS};
+
 
 int main(int argc, const char *argv[])
 {
@@ -45,7 +60,7 @@ int main(int argc, const char *argv[])
 
     InitAudioDevice();
     SetAudioStreamBufferSizeDefault(MAX_SAMPLES_PER_UPDATE);
-    AudioStream stream = LoadAudioStream(44100, 16, 2);
+    AudioStream stream = LoadAudioStream(SAMPLE_RATE, 16, NUM_CHANNELS);
     SetAudioStreamCallback(stream, AudioInputCallback);
     PlayAudioStream(stream);
 
@@ -58,14 +73,14 @@ int main(int argc, const char *argv[])
     SetTargetFPS(60);
 
     Sapphire::LightningBolt bolt(2000);
-    bolt.generate();
+    MakeThunder(bolt);
 
     float viewAngle = 0.0f;
 
     while (!WindowShouldClose())
     {
         if (IsKeyPressed(KEY_R))
-            bolt.generate();
+            MakeThunder(bolt);
 
         if (IsKeyPressed(KEY_S))
             Save(bolt);
@@ -133,15 +148,8 @@ static void Save(const Sapphire::LightningBolt& bolt)
 {
     using namespace Sapphire;
 
-    // Create a pair of ears for stereo audio output.
-    BoltPointList ears
-    {
-        BoltPoint{4000.0, +0.1, 0.0},
-        BoltPoint{4000.0, -0.1, 0.0}
-    };
-
     // Convert the lightning bolt into a thunder generator.
-    Thunder thunder{ears, bolt.getMaxSegments()};
+    Thunder thunder{Listener, bolt.getMaxSegments()};
     thunder.start(bolt);
 
     // Save lightning and thunder for study.
@@ -167,14 +175,57 @@ static void Save(const Sapphire::LightningBolt& bolt)
 }
 
 
+static std::vector<int16_t> AudioBuffer;
+static std::size_t AudioBufferIndex;
+static std::mutex AudioMutex;
+
+
 static void AudioInputCallback(void *buffer, unsigned frames)
 {
+    using namespace std;
+
     int16_t *data = static_cast<int16_t *>(buffer);
     unsigned s = 0;
-    for (unsigned i = 0; i < frames; ++i)
+
     {
-        data[s++] = ((i & 0xfff) == 0) ? 20000 : 0;
-        data[s++] = ((i & 0x7ff) == 0) ? 20000 : 0;
+        lock_guard<mutex> guard(AudioMutex);
+        std::size_t n = AudioBuffer.size();
+        for (unsigned i = 0; i < frames; ++i)
+        {
+            data[s++] = (AudioBufferIndex < n) ? AudioBuffer[AudioBufferIndex++] : 0;
+            data[s++] = (AudioBufferIndex < n) ? AudioBuffer[AudioBufferIndex++] : 0;
+        }
+    }
+}
+
+
+static void MakeThunder(Sapphire::LightningBolt& bolt)
+{
+    using namespace std;
+
+    bolt.generate();
+    BackgroundThunder.start(bolt);
+    vector<float> raw = BackgroundThunder.renderAudio(SAMPLE_RATE);
+
+    // Normalize the raw audio to fit within 16-bit integer samples.
+    float maxSample = 0.0f;
+    for (float x : raw)
+        maxSample = std::max(maxSample, std::abs(x));
+
+    if (maxSample == 0.0f)
+        maxSample = 1.0f;       // avoid division by zero
+
+    vector<int16_t> audio;
+    for (float x : raw)
+    {
+        int16_t s = static_cast<int16_t>((x / maxSample) * 32700.0f);
+        audio.push_back(s);
+    }
+
+    {
+        lock_guard<mutex> guard(AudioMutex);
+        AudioBuffer = audio;
+        AudioBufferIndex = 0;
     }
 }
 
