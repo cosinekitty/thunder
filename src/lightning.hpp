@@ -7,6 +7,8 @@
 
 namespace Sapphire
 {
+    const double SPEED_OF_SOUND_IN_AIR = 343.0;     // [meters/second]
+
     struct BoltPoint
     {
         double x;
@@ -178,6 +180,8 @@ namespace Sapphire
         BoltPointList ears;
         const std::size_t maxSegments;
         std::vector<ThunderSegmentList> seglistForEar;
+        double minDistance{};
+        double maxDistance{};
 
         void startEar(const LightningBolt& bolt, const BoltPoint& ear, ThunderSegmentList& seglist)
         {
@@ -195,6 +199,17 @@ namespace Sapphire
                     double swap = ts.distance1;
                     ts.distance1 = ts.distance2;
                     ts.distance2 = swap;
+                }
+
+                if (minDistance < 0.0)
+                {
+                    minDistance = ts.distance1;
+                    maxDistance = ts.distance2;
+                }
+                else
+                {
+                    minDistance = std::min(minDistance, ts.distance1);
+                    maxDistance = std::max(maxDistance, ts.distance2);
                 }
 
                 seglist.push_back(ts);
@@ -234,6 +249,7 @@ namespace Sapphire
             if (bolt.getMaxSegments() > maxSegments)
                 throw std::range_error("LightningBolt has too many segments for this Thunder object.");
 
+            minDistance = maxDistance = -1.0;   // special flag for first time init
             const std::size_t n = ears.size();
             for (std::size_t i = 0; i < n; ++i)
                 startEar(bolt, ears.at(i), seglistForEar.at(i));
@@ -243,11 +259,44 @@ namespace Sapphire
         {
             std::vector<float> buffer;
 
-            for (int i = 0; i < sampleRateHz; ++i)
+            if (minDistance < maxDistance)
             {
-                float x = std::sin((i * (2*M_PI) * 440.0) / sampleRateHz);
-                buffer.push_back(x);
-                buffer.push_back(x);
+                // For now, skip initial silence by starting at minDistance.
+                // Later we can return minDistance and allow the caller to delay the inital onset for realism.
+                // Calculate the total buffer duration in frames.
+
+                double durationSeconds = (maxDistance - minDistance) / SPEED_OF_SOUND_IN_AIR;
+                int durationFrames = static_cast<int>(std::ceil(sampleRateHz * durationSeconds));
+                int nchannels = numEars();
+                int nsamples = nchannels * durationFrames;
+
+                buffer.clear();
+                buffer.resize(nsamples);
+
+                // Iterate through every ThunderSegment and mix in its contribution to the impulse response.
+                // Each must be applied to the correct ear/channel.
+
+                for (int c = 0; c < nchannels; ++c)
+                {
+                    for (const ThunderSegment& s : seglistForEar.at(c))
+                    {
+                        // Do a linear interpolation using the inverse square law at the range of distances.
+                        double amp1 = 1 / (s.distance1 * s.distance1);
+                        double amp2 = 1 / (s.distance2 * s.distance2);
+
+                        // Snap to nearest frame at endpoints, but round down at the end.
+                        // That is because another segment will usually snap to the endpoint as its beginning.
+                        double t1 = (s.distance1 - minDistance) / SPEED_OF_SOUND_IN_AIR;
+                        double t2 = (s.distance2 - minDistance) / SPEED_OF_SOUND_IN_AIR;
+                        int f1 = static_cast<int>(std::round(t1 * sampleRateHz));
+                        int f2 = static_cast<int>(std::round(t2 * sampleRateHz));
+                        for (int f = f1; f < f2; ++f)
+                        {
+                            double x = static_cast<double>(f-f1) / static_cast<double>((f2-1) - f1);
+                            buffer.at(nchannels*f + c) += (1.0-x)*amp1 + x*amp2;
+                        }
+                    }
+                }
             }
 
             return buffer;

@@ -72,7 +72,7 @@ int main(int argc, const char *argv[])
 
     SetTargetFPS(60);
 
-    Sapphire::LightningBolt bolt(2000);
+    Sapphire::LightningBolt bolt(MAX_SEGMENTS);
     MakeThunder(bolt);
 
     float viewAngle = 0.0f;
