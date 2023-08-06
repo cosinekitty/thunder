@@ -34,7 +34,6 @@ const int MAX_SAMPLES_PER_UPDATE = 4096;
 const int SAMPLE_RATE = 44100;
 const int NUM_CHANNELS = 2;
 
-static Vector3 Vantage(float viewAngle);
 static void Render(const Sapphire::LightningBolt& bolt);
 static void Save(const Sapphire::LightningBolt& bolt);
 static void AudioInputCallback(void *buffer, unsigned frames);
@@ -65,6 +64,7 @@ int main(int argc, const char *argv[])
     PlayAudioStream(stream);
 
     Camera3D camera{};
+    camera.position = (Vector3){ 10.0f, 5.0f, 10.0f };
     camera.target = (Vector3){ 0.0f, 2.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
     camera.fovy = 50.0f;
@@ -86,9 +86,7 @@ int main(int argc, const char *argv[])
             Save(bolt);
 
         viewAngle = std::fmod(viewAngle + 0.002f, 2.0 * M_PI);
-        camera.position = Vantage(viewAngle);
-        SetCameraMode(camera, CAMERA_FREE);
-        UpdateCamera(&camera);
+        UpdateCamera(&camera, CAMERA_ORBITAL);
         BeginDrawing();
         ClearBackground(BLACK);
         BeginMode3D(camera);
@@ -102,19 +100,6 @@ int main(int argc, const char *argv[])
     CloseAudioDevice();
     CloseWindow();
     return 0;
-}
-
-
-static Vector3 Vantage(float viewAngle)
-{
-    Vector3 vec;
-
-    const float radius = 15.0f;
-    vec.x = radius * std::sin(viewAngle);
-    vec.y = 6.0f;
-    vec.z = radius * std::cos(viewAngle);
-
-    return vec;
 }
 
 
