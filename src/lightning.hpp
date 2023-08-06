@@ -292,8 +292,8 @@ namespace Sapphire
                         int f2 = static_cast<int>(std::round(t2 * sampleRateHz));
                         for (int f = f1; f < f2; ++f)
                         {
-                            double x = static_cast<double>(f-f1) / static_cast<double>((f2-1) - f1);
-                            buffer.at(nchannels*f + c) += (1.0-x)*amp1 + x*amp2;
+                            double x = static_cast<double>(f-f1) / static_cast<double>(f2-f1);
+                            buffer.at(nchannels*f + c) += (1-x)*amp1 + x*amp2;
                         }
                     }
                 }

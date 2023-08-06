@@ -28,6 +28,7 @@
 #include <mutex>
 
 #include "raylib.h"
+#include "wavefile.hpp"
 #include "lightning.hpp"
 
 const int MAX_SAMPLES_PER_UPDATE = 4096;
@@ -192,6 +193,20 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
     BackgroundThunder.start(bolt);
     vector<float> raw = BackgroundThunder.renderAudio(SAMPLE_RATE);
 
+#if 0
+    // Debug dump of raw audio.
+    {
+        FILE *outfile = fopen("output/raw.txt", "wt");
+        if (outfile != nullptr)
+        {
+            int i = 0;
+            for (float x : raw)
+                fprintf(outfile, "%6d: %g\n", i++, x);
+            fclose(outfile);
+        }
+    }
+#endif
+
     // Normalize the raw audio to fit within 16-bit integer samples.
     float maxSample = 0.0f;
     for (float x : raw)
@@ -211,6 +226,20 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
         lock_guard<mutex> guard(AudioMutex);
         AudioBuffer = audio;
         AudioBufferIndex = 0;
+    }
+
+    {
+        // Now that we have started the new audio render, save the audio at our leisure.
+        Sapphire::ScaledWaveFileWriter wave;
+        const char *outWaveFileName = "output/thunder.wav";
+        if (wave.Open(outWaveFileName, SAMPLE_RATE, NUM_CHANNELS))
+        {
+            wave.WriteSamples(raw.data(), static_cast<int>(raw.size()));
+        }
+        else
+        {
+            printf("ERROR: MakeThunder cannot open output file: %s\n", outWaveFileName);
+        }
     }
 }
 
