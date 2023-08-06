@@ -43,8 +43,8 @@ static void MakeThunder(Sapphire::LightningBolt& bolt);
 // Create a pair of ears for stereo audio output.
 static const Sapphire::BoltPointList Listener
 {
-    Sapphire::BoltPoint{4000.0, +0.1, 0.0},
-    Sapphire::BoltPoint{4000.0, -0.1, 0.0}
+    Sapphire::BoltPoint{2500.0, +0.1, 0.0},
+    Sapphire::BoltPoint{2500.0, -0.1, 0.0}
 };
 
 const std::size_t MAX_SEGMENTS = 2000;
@@ -127,6 +127,28 @@ static void Render(const Sapphire::LightningBolt& bolt)
 
         DrawLine3D(startPos, endPos, color);
     }
+
+    // Draw an arrow pointing down to the left ear of the listener.
+    // At rendering scale, the distance between the ears is negligible.
+    Vector3 arrowBottom;
+    arrowBottom.x = scale * Listener.at(0).x;
+    arrowBottom.y = scale * Listener.at(0).z;
+    arrowBottom.z = -scale * Listener.at(0).y;
+
+    Vector3 arrowTop = arrowBottom;
+    arrowTop.y += (scale * 100);
+
+    Vector3 arrowSlant1 = arrowBottom;
+    arrowSlant1.x += (scale * 30);
+    arrowSlant1.y += (scale * 30);
+
+    Vector3 arrowSlant2 = arrowBottom;
+    arrowSlant2.x -= (scale * 30);
+    arrowSlant2.y += (scale * 30);
+
+    DrawLine3D(arrowBottom, arrowTop, GREEN);
+    DrawLine3D(arrowBottom, arrowSlant1, GREEN);
+    DrawLine3D(arrowBottom, arrowSlant2, GREEN);
 }
 
 
@@ -192,20 +214,6 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
     bolt.generate();
     BackgroundThunder.start(bolt);
     vector<float> raw = BackgroundThunder.renderAudio(SAMPLE_RATE);
-
-#if 0
-    // Debug dump of raw audio.
-    {
-        FILE *outfile = fopen("output/raw.txt", "wt");
-        if (outfile != nullptr)
-        {
-            int i = 0;
-            for (float x : raw)
-                fprintf(outfile, "%6d: %g\n", i++, x);
-            fclose(outfile);
-        }
-    }
-#endif
 
     // Normalize the raw audio to fit within 16-bit integer samples.
     float maxSample = 0.0f;
