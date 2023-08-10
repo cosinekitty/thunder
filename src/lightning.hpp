@@ -4,6 +4,7 @@
 #include <random>
 #include <stdexcept>
 #include <vector>
+#include "audio_buffer.hpp"
 
 namespace Sapphire
 {
@@ -255,9 +256,11 @@ namespace Sapphire
                 startEar(bolt, ears.at(i), seglistForEar.at(i));
         }
 
-        std::vector<float> renderAudio(int sampleRateHz) const
+        AudioBuffer renderAudio(int sampleRateHz) const
         {
             std::vector<float> buffer;
+
+            int nchannels = numEars();
 
             if (minDistance < maxDistance)
             {
@@ -267,7 +270,6 @@ namespace Sapphire
 
                 double durationSeconds = (maxDistance - minDistance) / SPEED_OF_SOUND_IN_AIR;
                 int durationFrames = static_cast<int>(std::ceil(sampleRateHz * durationSeconds));
-                int nchannels = numEars();
                 int nsamples = nchannels * durationFrames;
 
                 buffer.clear();
@@ -299,7 +301,7 @@ namespace Sapphire
                 }
             }
 
-            return buffer;
+            return AudioBuffer(buffer, nchannels);
         }
     };
 }

@@ -10,9 +10,7 @@ namespace Sapphire
     {
         int channels = std::max(f.channels(), g.channels());
         int frames = f.frames() + g.frames();
-        std::vector<float> data;
-        data.resize(channels * frames);
-        return AudioBuffer(data, channels);
+        return AudioBuffer(frames, channels);
     }
 
     inline void ConvolveChannelPair(
@@ -22,7 +20,15 @@ namespace Sapphire
         const AudioBuffer& g,
         int gc)
     {
-        
+        const int yf = y.frames();
+        const int gf = g.frames();
+        for (int i = 0; i < yf; ++i)
+        {
+            float sum = 0.0f;
+            for (int k = gf-1; k >= 0; --k)
+                sum += g.get(gc, k) * f.get(fc, i-k);
+            y.at(fc, i) = sum;
+        }
     }
 
     inline AudioBuffer Convolution(const AudioBuffer& f, const AudioBuffer& g)

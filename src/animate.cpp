@@ -213,7 +213,8 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
 
     bolt.generate();
     BackgroundThunder.start(bolt);
-    vector<float> raw = BackgroundThunder.renderAudio(SAMPLE_RATE);
+    Sapphire::AudioBuffer audioBuffer = BackgroundThunder.renderAudio(SAMPLE_RATE);
+    const std::vector<float>& raw = audioBuffer.buffer();
 
     // Normalize the raw audio to fit within 16-bit integer samples.
     float maxSample = 0.0f;
