@@ -30,11 +30,13 @@
 #include "raylib.h"
 #include "wavefile.hpp"
 #include "lightning.hpp"
+#include "convolution.hpp"
 
 const int MAX_SAMPLES_PER_UPDATE = 4096;
 const int SAMPLE_RATE = 44100;
 const int NUM_CHANNELS = 2;
 
+static bool LoadConvolutionAudio();
 static void Render(const Sapphire::LightningBolt& bolt);
 static void Save(const Sapphire::LightningBolt& bolt);
 static void AudioInputCallback(void *buffer, unsigned frames);
@@ -49,12 +51,15 @@ static const Sapphire::BoltPointList Listener
 
 const std::size_t MAX_SEGMENTS = 2000;
 static Sapphire::Thunder BackgroundThunder{Listener, MAX_SEGMENTS};
-
+static Sapphire::AudioBuffer ConvolutionAudio;
 
 int main(int argc, const char *argv[])
 {
     const int screenWidth  = 900;
     const int screenHeight = 900;
+
+    if (!LoadConvolutionAudio())
+        return 1;
 
     InitWindow(screenWidth, screenHeight, "Lightning simulation by Don Cross");
 
@@ -213,19 +218,22 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
 
     bolt.generate();
     BackgroundThunder.start(bolt);
-    Sapphire::AudioBuffer audioBuffer = BackgroundThunder.renderAudio(SAMPLE_RATE);
-    const std::vector<float>& raw = audioBuffer.buffer();
+    Sapphire::AudioBuffer rawBuffer = BackgroundThunder.renderAudio(SAMPLE_RATE);
+    printf("Starting convolution...\n");
+    Sapphire::AudioBuffer audioBuffer = Sapphire::Convolution(rawBuffer, ConvolutionAudio);
+    printf("Finished convolution.\n");
+    const std::vector<float>& audioData = audioBuffer.buffer();
 
     // Normalize the raw audio to fit within 16-bit integer samples.
     float maxSample = 0.0f;
-    for (float x : raw)
+    for (float x : audioData)
         maxSample = std::max(maxSample, std::abs(x));
 
     if (maxSample == 0.0f)
         maxSample = 1.0f;       // avoid division by zero
 
     vector<int16_t> audio;
-    for (float x : raw)
+    for (float x : audioData)
     {
         int16_t s = static_cast<int16_t>((x / maxSample) * 32700.0f);
         audio.push_back(s);
@@ -243,12 +251,34 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
         const char *outWaveFileName = "output/thunder.wav";
         if (wave.Open(outWaveFileName, SAMPLE_RATE, NUM_CHANNELS))
         {
-            wave.WriteSamples(raw.data(), static_cast<int>(raw.size()));
+            wave.WriteSamples(audioData.data(), static_cast<int>(audioData.size()));
         }
         else
         {
             printf("ERROR: MakeThunder cannot open output file: %s\n", outWaveFileName);
         }
     }
+}
+
+
+static bool LoadConvolutionAudio()
+{
+    const char *filename = "input/knock.wav";
+    Sapphire::WaveFileReader reader;
+    if (!reader.Open(filename))
+    {
+        printf("LoadConvolutionAudio: Cannot open input file: %s\n", filename);
+        return false;
+    }
+    size_t nsamples = reader.TotalSamples();
+    printf("LoadConvolutionAudio: file %s contains %lu samples, %d channels.\n", filename, static_cast<unsigned long>(nsamples), reader.Channels());
+    std::vector<float> buffer = reader.Read(nsamples);
+    if (buffer.size() != nsamples)
+    {
+        printf("LoadConvolutionAudio: read incorrect number of samples %lu\n", static_cast<unsigned long>(buffer.size()));
+        return false;
+    }
+    ConvolutionAudio = Sapphire::AudioBuffer(buffer, reader.Channels());
+    return true;
 }
 

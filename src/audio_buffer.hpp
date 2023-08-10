@@ -23,6 +23,11 @@ namespace Sapphire
         }
 
     public:
+        // Placeholder audio with 1 channel and 0 frames.
+        AudioBuffer()
+            : nChannels(1)
+            {}
+
         // Construct an AudioBuffer with a pre-calculated float array.
         AudioBuffer(const std::vector<float>& _data, int _channels)
             : data(_data)

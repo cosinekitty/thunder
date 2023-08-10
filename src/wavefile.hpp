@@ -378,6 +378,14 @@ namespace Sapphire
 
             return received;
         }
+
+        std::vector<float> Read(size_t requestedSamples)
+        {
+            std::vector<float> buffer(requestedSamples);
+            size_t received = Read(buffer.data(), requestedSamples);
+            buffer.resize(received);
+            return buffer;
+        }
     };
 }
 
