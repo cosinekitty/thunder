@@ -32,11 +32,17 @@
 #include "lightning.hpp"
 #include "convolution.hpp"
 
+#define ENABLE_CONVOLUTION 0
+
 const int MAX_SAMPLES_PER_UPDATE = 4096;
 const int SAMPLE_RATE = 44100;
 const int NUM_CHANNELS = 2;
 
+#if ENABLE_CONVOLUTION
+static Sapphire::AudioBuffer ConvolutionAudio;
 static bool LoadConvolutionAudio();
+#endif
+
 static void Render(const Sapphire::LightningBolt& bolt);
 static void Save(const Sapphire::LightningBolt& bolt);
 static void AudioInputCallback(void *buffer, unsigned frames);
@@ -51,15 +57,16 @@ static const Sapphire::BoltPointList Listener
 
 const std::size_t MAX_SEGMENTS = 2000;
 static Sapphire::Thunder BackgroundThunder{Listener, MAX_SEGMENTS};
-static Sapphire::AudioBuffer ConvolutionAudio;
 
 int main(int argc, const char *argv[])
 {
     const int screenWidth  = 900;
     const int screenHeight = 900;
 
+#if ENABLE_CONVOLUTION
     if (!LoadConvolutionAudio())
         return 1;
+#endif
 
     InitWindow(screenWidth, screenHeight, "Lightning simulation by Don Cross");
 
@@ -219,10 +226,15 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
     bolt.generate();
     BackgroundThunder.start(bolt);
     Sapphire::AudioBuffer rawBuffer = BackgroundThunder.renderAudio(SAMPLE_RATE);
+
+#if ENABLE_CONVOLUTION
     printf("Starting convolution...\n");
     Sapphire::AudioBuffer audioBuffer = Sapphire::Convolution(rawBuffer, ConvolutionAudio);
     printf("Finished convolution.\n");
     const std::vector<float>& audioData = audioBuffer.buffer();
+#else
+    const std::vector<float>& audioData = rawBuffer.buffer();
+#endif
 
     // Normalize the raw audio to fit within 16-bit integer samples.
     float maxSample = 0.0f;
@@ -260,7 +272,7 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
     }
 }
 
-
+#if ENABLE_CONVOLUTION
 static bool LoadConvolutionAudio()
 {
     const char *filename = "input/knock.wav";
@@ -281,4 +293,4 @@ static bool LoadConvolutionAudio()
     ConvolutionAudio = Sapphire::AudioBuffer(buffer, reader.Channels());
     return true;
 }
-
+#endif
