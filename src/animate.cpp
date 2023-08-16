@@ -32,13 +32,16 @@
 #include "lightning.hpp"
 #include "convolution.hpp"
 
-#define ENABLE_CONVOLUTION 0
+#define RENDER_MODE_RAW 0
+#define RENDER_MODE_CONVOLUTION 1
+
+#define SELECTED_RENDER_MODE RENDER_MODE_RAW
 
 const int MAX_SAMPLES_PER_UPDATE = 4096;
 const int SAMPLE_RATE = 44100;
 const int NUM_CHANNELS = 2;
 
-#if ENABLE_CONVOLUTION
+#if SELECTED_RENDER_MODE == RENDER_MODE_CONVOLUTION
 static Sapphire::AudioBuffer ConvolutionAudio;
 static bool LoadConvolutionAudio();
 #endif
@@ -63,7 +66,7 @@ int main(int argc, const char *argv[])
     const int screenWidth  = 900;
     const int screenHeight = 900;
 
-#if ENABLE_CONVOLUTION
+#if SELECTED_RENDER_MODE == RENDER_MODE_CONVOLUTION
     if (!LoadConvolutionAudio())
         return 1;
 #endif
@@ -227,13 +230,15 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
     BackgroundThunder.start(bolt);
     Sapphire::AudioBuffer rawBuffer = BackgroundThunder.renderAudio(SAMPLE_RATE);
 
-#if ENABLE_CONVOLUTION
+#if SELECTED_RENDER_MODE == RENDER_MODE_RAW
+    const std::vector<float>& audioData = rawBuffer.buffer();
+#elif SELECTED_RENDER_MODE == RENDER_MODE_CONVOLUTION
     printf("Starting convolution...\n");
     Sapphire::AudioBuffer audioBuffer = Sapphire::Convolution(rawBuffer, ConvolutionAudio);
     printf("Finished convolution.\n");
     const std::vector<float>& audioData = audioBuffer.buffer();
 #else
-    const std::vector<float>& audioData = rawBuffer.buffer();
+    #error unknown render mode
 #endif
 
     // Normalize the raw audio to fit within 16-bit integer samples.
@@ -272,7 +277,7 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
     }
 }
 
-#if ENABLE_CONVOLUTION
+#if SELECTED_RENDER_MODE == RENDER_MODE_CONVOLUTION
 static bool LoadConvolutionAudio()
 {
     const char *filename = "input/knock.wav";
