@@ -35,7 +35,7 @@
 #define RENDER_MODE_RAW 0
 #define RENDER_MODE_CONVOLUTION 1
 
-#define SELECTED_RENDER_MODE RENDER_MODE_RAW
+#define SELECTED_RENDER_MODE    RENDER_MODE_RAW
 
 const int MAX_SAMPLES_PER_UPDATE = 4096;
 const int SAMPLE_RATE = 44100;
@@ -280,7 +280,7 @@ static void MakeThunder(Sapphire::LightningBolt& bolt)
 #if SELECTED_RENDER_MODE == RENDER_MODE_CONVOLUTION
 static bool LoadConvolutionAudio()
 {
-    const char *filename = "input/knock.wav";
+    const char *filename = "input/crash.wav";
     Sapphire::WaveFileReader reader;
     if (!reader.Open(filename))
     {
